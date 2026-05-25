@@ -1,0 +1,25 @@
+apps:
+  api:
+    port: 3000
+    privatePort: 4000
+    useCachingInterceptor: true
+  cacheWarmer:
+    port: 4001
+  queueWorker:
+    port: 4002
+  transactionsProcessor:
+    port: 4003
+    maxLookBehind: 100
+libs:
+  common:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${num:REDIS_PORT}
+      password: ${REDIS_PASSWORD}
+    nativeAuth:
+      # maxExpirySeconds:
+      acceptedOrigins:
+        - utils.multiversx.com
+    security:
+      admins: []
+    # rateLimiterSecret:

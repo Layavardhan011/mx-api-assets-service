@@ -1,0 +1,44 @@
+import * as dotenv from 'dotenv';
+import { resolve } from 'path';
+
+dotenv.config({
+  path: resolve(process.cwd(), '.env'),
+});
+
+import 'module-alias/register';
+import { NestFactory } from '@nestjs/core';
+import { CommonConfigService, PubSubListenerModule } from '@libs/common';
+import { AppModule } from './app.module';
+import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
+import { AppConfigService } from './config/app-config.service';
+
+async function bootstrap() {
+  const transactionProcessorApp = await NestFactory.create(AppModule);
+  const appConfigService = transactionProcessorApp.get<AppConfigService>(AppConfigService);
+  const commonConfigService = transactionProcessorApp.get<CommonConfigService>(CommonConfigService);
+
+  await transactionProcessorApp.listen(appConfigService.config.port);
+
+  const pubSubApp = await NestFactory.createMicroservice<MicroserviceOptions>(
+    PubSubListenerModule.forRoot(),
+    {
+      transport: Transport.REDIS,
+      options: {
+        host: commonConfigService.config.redis.host,
+        port: commonConfigService.config.redis.port,
+        username: process.env.REDIS_PUBSUB_USER || undefined,
+        password: process.env.REDIS_PUBSUB_PASSWORD || commonConfigService.config.redis.password,
+        retryAttempts: 100,
+        retryDelay: 1000,
+        retryStrategy: () => 1000,
+      },
+    },
+  );
+  pubSubApp.useLogger(pubSubApp.get(WINSTON_MODULE_NEST_PROVIDER));
+  // eslint-disable-next-line @typescript-eslint/no-floating-promises
+  pubSubApp.listen();
+}
+
+// eslint-disable-next-line @typescript-eslint/no-floating-promises
+bootstrap();
