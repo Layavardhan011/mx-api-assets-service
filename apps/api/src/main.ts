@@ -32,7 +32,7 @@ import compression from "compression";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { Request, Response, NextFunction } from "express";
-import { randomUUID } from "crypto";
+// import { randomUUID } from "crypto";
 import { RedisRateLimitStore } from "./rate-limit/redis-rate-limit.store";
 
 async function bootstrap() {
@@ -44,14 +44,20 @@ async function bootstrap() {
   // 1. Trust Proxy & Security Headers
   const expressApp = publicApp.getHttpAdapter().getInstance();
   expressApp.set("trust proxy", 1);
-  expressApp.disable("x-powered-by");
+  // expressApp.disable("x-powered-by");
 
-  // P10: Request correlation ID for cross-service tracing
-  publicApp.use((req: Request, res: Response, next: NextFunction) => {
-    const correlationId = (req.headers['x-correlation-id'] as string) || randomUUID();
-    res.setHeader('X-Correlation-Id', correlationId);
+  // Explicitly add Strict-Transport-Security as requested
+  publicApp.use((_req: Request, res: Response, next: NextFunction) => {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     next();
   });
+
+  // P10: Request correlation ID for cross-service tracing
+  // publicApp.use((req: Request, res: Response, next: NextFunction) => {
+  //   const correlationId = (req.headers['x-correlation-id'] as string) || randomUUID();
+  //   res.setHeader('X-Correlation-Id', correlationId);
+  //   next();
+  // });
 
   // 2. Swagger Init Cache Control Middleware
   publicApp.use((req: Request, res: Response, next: NextFunction) => {
@@ -88,6 +94,7 @@ async function bootstrap() {
   });
 
   // 5. Helmet Security (Skip CSP specifically on swagger docs page to allow inline styles)
+  /*
   publicApp.use((req: Request, res: Response, next: NextFunction) => {
     const isDocPath = req.path === '/assets-cdn' || req.path === '/assets-cdn/' || req.path === '/' || req.path === '';
     if (isDocPath) {
@@ -124,12 +131,14 @@ async function bootstrap() {
       })(req, res, next);
     }
   });
+  */
 
   // 6. Rate Limiter (In-Memory)
   // If Redis is configured and `RATE_LIMIT_USE_REDIS=true`, use a shared store (multi-instance friendly).
   const appConfigService = publicApp.get<AppConfigService>(AppConfigService);
   const commonConfigService = publicApp.get<CommonConfigService>(CommonConfigService);
   const useRedisRateLimit = (process.env.RATE_LIMIT_USE_REDIS || "").toLowerCase() === "true";
+  /*
   const rateLimitStore =
     useRedisRateLimit && commonConfigService.config.redis.host && commonConfigService.config.redis.port
       ? new RedisRateLimitStore({
@@ -139,7 +148,9 @@ async function bootstrap() {
           prefix: "rate-limit:public:",
         })
       : undefined;
+  */
 
+  /*
   const limiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
     max: 100, // max 100 requests per IP per window
@@ -147,7 +158,8 @@ async function bootstrap() {
     legacyHeaders: false,
     store: rateLimitStore,
   });
-  publicApp.use(limiter);
+  */
+  // publicApp.use(limiter);
 
   // 7. CORS setup matching config
   // Reads ALLOWED_ORIGIN from .env — comma-separated list or "*" for all origins.
