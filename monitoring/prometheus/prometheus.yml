@@ -8,4 +8,4 @@ scrape_configs:
     # metrics_path defaults to '/metrics'.
     # scheme defaults to 'http'.
     static_configs:
-    - targets: ['host.docker.internal:4000']
+    - targets: ['host.docker.internal:4004']

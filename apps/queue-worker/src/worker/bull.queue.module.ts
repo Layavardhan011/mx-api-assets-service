@@ -10,6 +10,7 @@ import { CommonConfigModule, CommonConfigService } from '@libs/common';
           host: commonConfigService.config.redis.host,
           port: commonConfigService.config.redis.port,
           password: commonConfigService.config.redis.password,
+          enableReadyCheck: false,
         },
       }),
       imports: [CommonConfigModule],

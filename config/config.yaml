@@ -1,10 +1,10 @@
 apps:
   api:
-    port: 3000
-    privatePort: 4000
+    port: 3004
+    privatePort: 4004
     useCachingInterceptor: true
   cacheWarmer:
-    port: 4001
+    port: 4100
   queueWorker:
     port: 4002
   transactionsProcessor:

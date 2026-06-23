@@ -1,1 +1,1 @@
-user default on >mx_tools_secure_pass ~* &* +@all -@dangerous
+user default on >${REDIS_PASSWORD} ~* &* +@all -@dangerous

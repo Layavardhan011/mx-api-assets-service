@@ -12,7 +12,7 @@
     "build:infra": "npm run build:all && npm run copy-config-infra",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "npm run copy-config && npm run nest-start",
-    "start:api": "cross-env NODE_APP=api npm run start",
+    "start:api": "npx concurrently --kill-others \"npm run start:cache-warmer\" \"npm run start:queue-worker\" \"cross-env NODE_APP=api npm run start\"",
     "start:cache-warmer": "cross-env NODE_APP=cache-warmer npm run start",
     "start:queue-worker": "cross-env NODE_APP=queue-worker npm run start",
     "start:transactions-processor": "cross-env NODE_APP=transactions-processor npm run start",
@@ -26,7 +26,7 @@
     "test:cov": "jest --config ./test/unit/jest.config.js --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./apps/api/test/jest-e2e.json",
-    "test:performance": "k6 run -e BASE_URL=http://localhost:3000 test/performance/load-test.js",
+    "test:performance": "k6 run -e BASE_URL=http://localhost:3004 test/performance/load-test.js",
     "generate-types": "mxnest schema types config/schema.yaml libs/common/src/entities/config.d.ts",
     "audit:security": "npm audit --production --audit-level=high"
   },

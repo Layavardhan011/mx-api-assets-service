@@ -32,6 +32,7 @@ async function bootstrap() {
         retryAttempts: 100,
         retryDelay: 1000,
         retryStrategy: () => 1000,
+        enableReadyCheck: false,
       },
     },
   );

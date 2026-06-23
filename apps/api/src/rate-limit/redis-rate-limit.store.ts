@@ -23,6 +23,7 @@ export class RedisRateLimitStore implements Store {
       maxRetriesPerRequest: 2,
       enableOfflineQueue: true,
       lazyConnect: true,
+      enableReadyCheck: false,
     });
   }
 

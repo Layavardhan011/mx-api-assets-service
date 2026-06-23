@@ -26,7 +26,7 @@ export class MetadataSynchronizationCron implements OnModuleInit {
     });
   }
 
-  @Cron("*/10 * * * *")
+  @Cron("*/5 * * * * *")
   async handleCron() {
     this.logger.log("Triggered periodic cache synchronization.");
     await this.syncAll();

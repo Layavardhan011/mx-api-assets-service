@@ -49,7 +49,7 @@ Provides high-performance public REST endpoints and serves the core application 
   ```bash
   npm run start:api
   ```
-- _Default Port:_ [http://localhost:3000/assets-cdn](http://localhost:3000/assets-cdn) (Private Port: 4000)
+- _Default Port:_ [http://localhost:3004/assets-cdn](http://localhost:3004/assets-cdn) (Private Port: 4004)
 
 ### 2. Cache Warmer (`apps/cache-warmer`)
 
@@ -185,7 +185,7 @@ Behavior is managed using environment variables loaded from the `.env` file and 
 
 | Variable                  | Description                                                | Default               |
 | :------------------------ | :--------------------------------------------------------- | :-------------------- |
-| `PORT`                    | Listening port for the API REST Gateway service            | `3000`                |
+| `PORT`                    | Listening port for the API REST Gateway service            | `3004`                |
 | `ALLOWED_ORIGIN`          | Allowed domains for CORS (comma-separated, `*` allows all) | `*`                   |
 | `ALLOWED_HOSTS`           | Allowed host headers for security enforcement              | `localhost,127.0.0.1` |
 | `REDIS_HOST`              | Redis connection host                                      | `127.0.0.1`           |

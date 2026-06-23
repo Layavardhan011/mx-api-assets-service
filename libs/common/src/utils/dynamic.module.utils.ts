@@ -12,7 +12,8 @@ export class DynamicModuleUtils {
         host: configService.config.redis.host,
         port: configService.config.redis.port,
         password: configService.config.redis.password,
-      }, {
+        enableReadyCheck: false,
+      } as any, {
         poolLimit: 100,
         processTtl: 60,
       }),
@@ -41,6 +42,7 @@ export class DynamicModuleUtils {
             retryDelay: 1000,
             retryAttempts: 10,
             retryStrategy: () => 1000,
+            enableReadyCheck: false,
           },
         };
 
