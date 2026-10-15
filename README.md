@@ -117,6 +117,24 @@ Public endpoints are served on port `3004`, health/readiness on the public app, 
 
 Responses are served with `Cache-Control` headers (300s for collections, 1h for icons) and SVG icons additionally ship a restrictive `Content-Security-Policy` and `X-Content-Type-Options: nosniff`.
 
+### Private Port (`4004`)
+
+Not exposed publicly — used by the internal scraper/ingress only:
+
+| Method | Path       | Description                          |
+| :----- | :--------- | :----------------------------------- |
+| `GET`  | `/metrics` | Prometheus metrics exposition        |
+| `GET`  | `/hello`   | Liveness probe for the private app   |
+
+Restrict access with `PRIVATE_API_ALLOWED_IPS` or network policy.
+
+### Interactive API Docs (Swagger)
+
+The API Gateway serves an interactive Swagger UI built from `apps/api/docs/swagger.md`:
+
+> [!NOTE]
+> Start the API first (`npm run start:api`), then open [http://localhost:3004/assets-cdn](http://localhost:3004/assets-cdn)
+
 ---
 
 ## 🧪 Testing
@@ -210,6 +228,44 @@ flowchart TD
 
 Contains reusable entities, DTOs, configuration schemas, and decorators shared across all microservices to enforce consistency.
 
+### Project Structure
+
+```
+mx-api-assets-service/
+├── apps/
+│   ├── api/                    # Public REST gateway (3004) + private metrics app (4004)
+│   │   ├── docs/swagger.md     # Swagger description shown in the API docs UI
+│   │   └── src/endpoints/      # assets-cdn proxy controllers, DTOs, services
+│   ├── cache-warmer/           # Cron-driven metadata → Redis synchronization (4100)
+│   ├── queue-worker/           # Bull queue consumer (4002)
+│   └── transactions-processor/ # Blockchain transaction indexing (4003)
+├── libs/
+│   └── common/                 # Shared config, connectors, metrics, health-check, utils
+├── config/                     # config.yaml + schema.yaml (copied into apps at start)
+├── deploy/cdn/                 # Production / Cloudflare edge deployment guide
+├── monitoring/                 # Redis ACL, Prometheus & Grafana provisioning
+└── test/
+    ├── unit/                   # Jest unit suites
+    ├── performance/            # k6 load tests + adversarial suite
+    └── e2e-selenium/           # Browser-level fixtures
+```
+
+---
+
+## 🧰 Tech Stack
+
+| Layer        | Choice                                                              |
+| :----------- | :------------------------------------------------------------------ |
+| Framework    | NestJS 11 (monorepo) · TypeScript 5                                  |
+| Caching      | Redis 7 via `ioredis` + `@multiversx/sdk-nestjs-cache`               |
+| Queues       | Bull (`@nestjs/bull`) on Redis                                       |
+| Data source  | GitHub repository sync (`REPO_OWNER`/`REPO_NAME`) via REST + retries |
+| Rate limiting | `express-rate-limit` (memory, optional Redis store)                 |
+| Security     | Helmet, CORS allowlist, host allowlist, strict input validation     |
+| Observability | `prom-client` → Prometheus → Grafana                                |
+| Testing      | Jest, Supertest, k6, `autocannon`, adversarial suite                |
+| Packaging    | Docker & Docker Compose, `.dockerignore` hardening                  |
+
 ---
 
 ## 📊 Observability & Monitoring
@@ -234,8 +290,8 @@ Behavior is managed using environment variables loaded from the `.env` file and 
 
 | Variable                  | Description                                                | Default               |
 | :------------------------ | :--------------------------------------------------------- | :-------------------- |
-| `PORT`                    | Listening port for the API REST Gateway service            | `3004`                |
-| `privatePort` (config.yaml) | Private port for metrics/health                          | `4004`                |
+| `PORT`                    | Declared for reference — the gateway actually listens on `apps.api.port` from `config/config.yaml` | `3004`                |
+| `privatePort` (config.yaml) | Private port for `/metrics` & `/hello`                     | `4004`                |
 | `ALLOWED_ORIGIN`          | Allowed domains for CORS (comma-separated, `*` allows all) | `*`                   |
 | `ALLOWED_HOSTS`           | Allowed host headers for security enforcement              | `localhost,127.0.0.1` |
 | `REDIS_HOST`              | Redis connection host                                      | `127.0.0.1`           |
@@ -249,7 +305,7 @@ Behavior is managed using environment variables loaded from the `.env` file and 
 | `CDN_BASE_URL`            | Overrides the base URL used when resolving icon links      | `""` (derived)        |
 | `GITHUB_SYNC_CONCURRENCY` | Parallel GitHub API requests during a sync                 | `""` (internal default) |
 | `WARMER_CRON_SCHEDULE`    | Cron expression for metadata synchronization               | `0 */15 * * * *` (every 15 min) |
-| `RATE_LIMIT_USE_REDIS`    | Store rate-limit counters in Redis instead of memory       | `false`               |
+| `RATE_LIMIT_USE_REDIS`    | Use a Redis counter store for the **private-port** rate limiter (60 req/min) instead of memory | `false`               |
 
 > [!IMPORTANT]
 > `.env` (and any `.env.*`) are git-ignored and excluded from Docker images via `.dockerignore` — never commit real credentials. Only `.env.example` is tracked.
@@ -262,7 +318,7 @@ Behavior is managed using environment variables loaded from the `.env` file and 
 - **Security Auditing:** Integrated `npm audit` check for production dependencies (`npm run audit:security`).
 - **Host allowlisting:** Absolute icon URLs are only built from hosts present in `ALLOWED_HOSTS`; unknown `Host` headers fall back to the first allowed host (or are pattern-sanitized when no allowlist is configured).
 - **Input validation:** Identifiers, identities and addresses are validated by regex and reject reserved names (`__proto__`, `constructor`, …) to prevent prototype pollution.
-- **Rate limiting:** The public gateway applies 3000 requests / 15 min per IP (`/health` and `/ready` are exempt). Set `RATE_LIMIT_USE_REDIS=true` for a shared counter store across instances.
+- **Rate limiting:** The public gateway applies 3000 requests / 15 min per IP in memory (`/health` and `/ready` are exempt); the private port allows 60 req/min and can share its counters through Redis with `RATE_LIMIT_USE_REDIS=true`.
 - **Response hardening:** `X-Powered-By` is disabled; SVG responses are served with `default-src 'none'` CSP and `X-Content-Type-Options: nosniff`.
 - **Retries:** GitHub fetches retry with exponential backoff and honour `Retry-After` on `429`.
 
@@ -276,3 +332,24 @@ Production deployment is documented in [`deploy/cdn/CLOUDFLARE_EDGE_RULES.md`](d
 2. **Dual-port ingress isolation** — public traffic bound only to `3004`, with `4004` (metrics) kept internal.
 
 Docker builds use `.dockerignore`, which strips secrets, `.git` history, `node_modules`, tests and local logs from the image context.
+
+---
+
+## 🧯 Troubleshooting
+
+| Symptom | Likely cause & fix |
+| :------ | :----------------- |
+| `Cannot find module '.../dist/apps/...'` on start | The start scripts run compiled output — run `npm run build:all` first |
+| Missing `config.yaml` / `schema.yaml` in an app folder | Normal: `npm start` copies root `config/` into `apps/*/config/` on every run (`copy-config`) |
+| `503 Service Unavailable` + `Retry-After: 5` on collections | Cache not warmed yet — wait for the warmer cron (`WARMER_CRON_SCHEDULE`) or check the cache-warmer logs |
+| `400` on icon URLs behind a proxy/domain | The public domain is missing from `ALLOWED_HOSTS` (host allowlisting rejects it) |
+| `429 Too Many Requests` | Per-IP window reached — public gateway: 3000 / 15 min (in-memory, wait for the window); private port: 60 / min, optionally backed by Redis via `RATE_LIMIT_USE_REDIS=true` |
+| Redis `NOAUTH` / connection refused | `REDIS_PASSWORD` must match the password in `monitoring/redis/users.acl`; the compose file injects it from `.env` |
+| GitHub sync fails with `403`/`404` | Verify `GITHUB_TOKEN`, `REPO_OWNER`, `REPO_NAME` and `BRANCH`; retries honour `Retry-After` on `429` |
+| Ports already in use | Public `3004`, private `4004`, warmer `4100`, queue `4002`, tx-processor `4003` |
+
+---
+
+## 📄 License
+
+Private / UNLICENSED — see `package.json`. Not licensed for redistribution.
