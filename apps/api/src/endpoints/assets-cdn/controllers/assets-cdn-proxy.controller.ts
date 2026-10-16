@@ -28,7 +28,26 @@ export class AssetsCdnProxyController {
     if (configuredBase) {
       return configuredBase;
     }
-    const host = req.get("host") || "localhost:3201";
+    const rawHost = req.get("host") || "localhost:3201";
+    const allowedHosts = this.configService.allowedHosts;
+    let host = rawHost;
+
+    if (allowedHosts && allowedHosts.length > 0) {
+      const hostWithoutPort = rawHost.toLowerCase().split(":")[0];
+      const isAllowed = allowedHosts.some(allowed => {
+        const allowedWithoutPort = allowed.split(":")[0];
+        return hostWithoutPort === allowedWithoutPort || rawHost.toLowerCase() === allowed;
+      });
+      if (!isAllowed) {
+        host = allowedHosts[0];
+      }
+    } else {
+      // Basic sanitization: only allow alphanumeric, dots, hyphens, and port
+      if (!/^[a-zA-Z0-9.\-:]+$/.test(rawHost)) {
+        host = "localhost:3201";
+      }
+    }
+
     const proto = req.secure ? "https" : "http";
     return `${proto}://${host}`;
   }
@@ -51,6 +70,10 @@ export class AssetsCdnProxyController {
         const { buffer, mimeType } = await this.proxyService.getIcon(p1, p2, p3, p4, defaultIcon);
         res.setHeader("Content-Type", mimeType);
         res.setHeader("Cache-Control", "public, max-age=3600");
+        if (mimeType === "image/svg+xml") {
+          res.setHeader("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'");
+          res.setHeader("X-Content-Type-Options", "nosniff");
+        }
         return res.send(buffer);
       } catch (err: unknown) {
         if (err instanceof HttpError) {
@@ -304,7 +327,15 @@ export class AssetsCdnProxyController {
     @Res() res: Response
   ): Promise<unknown> {
     const { p1, p2 } = params;
-    const { network, type } = resolveParams({ p1, p2 });
+    const resolved = resolveParams({ p1, p2 });
+
+    // Parity with tools.multiversx.com: If p2 is an item identifier (e.g. /tokens/WEGLD-bd4d79),
+    // delegate to item handler (defaulting network to mainnet) instead of returning the full collection.
+    if (resolved.id && p2) {
+      return await this.respondItemOrIcon(p1, p2, undefined, undefined, this.getBaseUrl(req), res);
+    }
+
+    const { network, type } = resolved;
     const isReady = await this.proxyService.isReady(network, type);
     if (!isReady) {
       res.setHeader("Retry-After", "5");

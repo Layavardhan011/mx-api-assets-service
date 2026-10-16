@@ -222,7 +222,14 @@ export class AssetsCdnProxyService implements OnModuleInit {
 
     // Fast-path: indexed lookup (newer deployments)
     const index = await this.cacheService.get<Record<string, Record<string, unknown>>>(`${cacheKey}:index`);
-    const indexedHit = index ? index[id] : undefined;
+    const hasValidIndex = index && typeof index === "object" && index !== null;
+    const indexedHit = hasValidIndex &&
+      Object.prototype.hasOwnProperty.call(index, id) &&
+      typeof index[id] === "object" &&
+      index[id] !== null
+        ? index[id]
+        : undefined;
+
     if (indexedHit) {
       return this.resolveUrls(indexedHit, baseUrl);
     }
