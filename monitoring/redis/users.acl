@@ -1,1 +1,1 @@
-user default on >${REDIS_PASSWORD} ~* &* +@all -@dangerous
+user default on >dharitri-devnet ~* &* +@all -@dangerous

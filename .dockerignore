@@ -1,0 +1,78 @@
+# ==============================================================================
+# MultiversX Assets Service - Docker Build Ignore Configuration
+# ==============================================================================
+# DO NOT INCLUDE IN DOCKER IMAGES (Ignored below):
+# - Environment secrets (.env, .env.*)
+# - Version control metadata (.git, .gitignore)
+# - Local node_modules and pre-compiled dist folders
+# - Test suites, coverage reports, and benchmark scripts
+# - Agentic and assistant tooling artifacts (.agent/, .gemini/, etc.)
+# - Local runtime logs and temporary files
+#
+# INCLUDED IN DOCKER IMAGES:
+# - Application source code (/apps, /libs)
+# - Package manifests (package.json, package-lock.json)
+# - TypeScript configurations (tsconfig.json, nest-cli.json)
+# - Base configuration templates (/config)
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Environment Variables & Secrets (CRITICAL SECURITY)
+# ------------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+
+# ------------------------------------------------------------------------------
+# 2. Version Control & Git Metadata (CRITICAL: Prevents History Leaks)
+# ------------------------------------------------------------------------------
+.git
+.gitignore
+.gitattributes
+
+# ------------------------------------------------------------------------------
+# 3. Dependencies & Build Artifacts (Built fresh in Docker)
+# ------------------------------------------------------------------------------
+dist
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ------------------------------------------------------------------------------
+# 4. Logs & Diagnostic Files
+# ------------------------------------------------------------------------------
+*.log
+api.log
+logs
+
+# ------------------------------------------------------------------------------
+# 5. Agentic AI & Workspace Assistant Tooling
+# ------------------------------------------------------------------------------
+.agent
+.agents
+.gemini
+.gsd
+GSD-STYLE.md
+PROJECT_RULES.md
+VERSION
+model_capabilities.yaml
+skills-lock.json
+adapters
+scripts
+
+# ------------------------------------------------------------------------------
+# 6. Test Files, Benchmarks, & Temporary Scripts
+# ------------------------------------------------------------------------------
+test
+scratch
+coverage
+.nyc_output
+
+# ------------------------------------------------------------------------------
+# 7. Documentation & IDE Configs
+# ------------------------------------------------------------------------------
+.idea
+.vscode
+*.md
+!README.md

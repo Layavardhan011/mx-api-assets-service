@@ -55,7 +55,16 @@ export class GithubRepositoryConnector {
           return response;
         }
         if (attempt < this.maxRetries && this.isRetryableStatus(response.status)) {
-          const delayMs = this.computeBackoffDelayMs(attempt);
+          let delayMs = this.computeBackoffDelayMs(attempt);
+          if (response.status === 429) {
+            const retryAfter = response.headers?.get ? response.headers.get("retry-after") : undefined;
+            if (retryAfter) {
+              const seconds = Number.parseInt(retryAfter, 10);
+              if (Number.isFinite(seconds) && seconds > 0) {
+                delayMs = Math.min(seconds * 1000, 10000);
+              }
+            }
+          }
           this.logger.warn(`Retrying fetch (status ${response.status}) in ${delayMs}ms: ${url}`);
           await this.sleep(delayMs);
           continue;

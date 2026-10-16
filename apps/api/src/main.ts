@@ -44,7 +44,7 @@ async function bootstrap() {
   // 1. Trust Proxy & Security Headers
   const expressApp = publicApp.getHttpAdapter().getInstance();
   expressApp.set("trust proxy", 1);
-  // expressApp.disable("x-powered-by");
+  expressApp.disable("x-powered-by");
 
   // Explicitly add Strict-Transport-Security as requested
   publicApp.use((_req: Request, res: Response, next: NextFunction) => {
@@ -133,33 +133,19 @@ async function bootstrap() {
   });
   */
 
-  // 6. Rate Limiter (In-Memory)
-  // If Redis is configured and `RATE_LIMIT_USE_REDIS=true`, use a shared store (multi-instance friendly).
+  // 6. Rate Limiter (Public API protection against DoS / scraping)
   const appConfigService = publicApp.get<AppConfigService>(AppConfigService);
   const commonConfigService = publicApp.get<CommonConfigService>(CommonConfigService);
   const useRedisRateLimit = (process.env.RATE_LIMIT_USE_REDIS || "").toLowerCase() === "true";
-  /*
-  const rateLimitStore =
-    useRedisRateLimit && commonConfigService.config.redis.host && commonConfigService.config.redis.port
-      ? new RedisRateLimitStore({
-          host: commonConfigService.config.redis.host,
-          port: commonConfigService.config.redis.port,
-          password: commonConfigService.config.redis.password,
-          prefix: "rate-limit:public:",
-        })
-      : undefined;
-  */
 
-  /*
   const limiter = rateLimit({
-    windowMs: 60 * 1000, // 1 minute
-    max: 100, // max 100 requests per IP per window
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 3000, // max 3000 requests per IP per window (~200 req/min)
     standardHeaders: true,
     legacyHeaders: false,
-    store: rateLimitStore,
+    skip: (req) => req.path === "/health" || req.path === "/ready",
   });
-  */
-  // publicApp.use(limiter);
+  publicApp.use(limiter);
 
   // 7. CORS setup matching config
   // Reads ALLOWED_ORIGIN from .env — comma-separated list or "*" for all origins.

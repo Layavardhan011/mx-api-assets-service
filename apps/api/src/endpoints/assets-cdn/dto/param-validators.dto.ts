@@ -1,4 +1,16 @@
-import { IsString, Matches, IsOptional } from "class-validator";
+import { IsString, Matches, IsOptional, IsNotIn } from "class-validator";
+
+export const RESERVED_IDENTIFIERS = [
+  "constructor",
+  "__proto__",
+  "prototype",
+  "toString",
+  "valueOf",
+  "hasOwnProperty",
+  "isPrototypeOf",
+  "propertyIsEnumerable",
+  "toLocaleString",
+];
 
 export class AddressParam {
   @IsString()
@@ -9,12 +21,14 @@ export class AddressParam {
 export class IdentifierParam {
   @IsString()
   @Matches(/^[a-zA-Z0-9-]{2,50}$/, { message: "Invalid identifier format" })
+  @IsNotIn(RESERVED_IDENTIFIERS, { message: "Invalid identifier" })
   identifier!: string;
 }
 
 export class IdentityParam {
   @IsString()
   @Matches(/^[a-zA-Z0-9._-]{2,50}$/, { message: "Invalid identity format" })
+  @IsNotIn(RESERVED_IDENTIFIERS, { message: "Invalid identity" })
   identity!: string;
 }
 

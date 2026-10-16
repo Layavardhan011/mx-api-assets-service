@@ -26,7 +26,7 @@ export class MetadataSynchronizationCron implements OnModuleInit {
     });
   }
 
-  @Cron("*/5 * * * * *")
+  @Cron(process.env.WARMER_CRON_SCHEDULE || "0 */15 * * * *")
   async handleCron() {
     this.logger.log("Triggered periodic cache synchronization.");
     await this.syncAll();
@@ -131,7 +131,17 @@ export class MetadataSynchronizationCron implements OnModuleInit {
       const cacheKey = `assets-cdn:${network}:${type}`;
       await this.cacheService.set(cacheKey, filtered, 900); // P6: 15 min TTL (matches API service)
 
-      this.logger.log(`[Sync] Finished ${network}/${type} (${filtered.length} items cached)`);
+      // Pre-warm the item index dictionary for sub-millisecond single item lookups
+      const idKey = type === "accounts" ? "address" : type === "identities" ? "identity" : "identifier";
+      const indexDict: Record<string, unknown> = {};
+      for (const item of filtered) {
+        if (item && typeof item === "object" && (item as Record<string, unknown>)[idKey]) {
+          indexDict[(item as Record<string, unknown>)[idKey] as string] = item;
+        }
+      }
+      await this.cacheService.set(`${cacheKey}:index`, indexDict, 900);
+
+      this.logger.log(`[Sync] Finished ${network}/${type} (${filtered.length} items cached with index)`);
     } catch (error: unknown) {
       this.logger.error(`[Sync] Failed ${network}/${type}: HTTP ${(error as { status?: number })?.status || "unknown"} - ${error instanceof Error ? error.message : error}`);
     }

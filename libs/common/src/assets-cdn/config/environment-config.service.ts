@@ -49,6 +49,11 @@ export class EnvironmentConfigService {
     return this.configService.get<string>("CDN_BASE_URL", "");
   }
 
+  get allowedHosts(): string[] {
+    const raw = this.configService.get<string>("ALLOWED_HOSTS", "");
+    return raw ? raw.split(",").map(h => h.trim().toLowerCase()) : [];
+  }
+
   get githubSyncConcurrency(): number | undefined {
     const raw = this.configService.get<string>("GITHUB_SYNC_CONCURRENCY");
     if (!raw) return undefined;
